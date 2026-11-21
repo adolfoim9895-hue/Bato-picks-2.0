@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "estado": "sin_datos",
+  "actualizado": "2026-11-21T20:26:30.432797+00:00",
+  "zone": "America/Tijuana",
+  "zona_horaria": "America/Tijuana",
+  "inicio": "2026-11-21",
+  "fin": "2026-11-27",
+  "fuente": "football-data.org + OpenLigaDB (+TheSportsDB opcional)",
+  "mensaje": "Instala esta actualización en GitHub y ejecuta Actions para descargar partidos reales. No hay pronósticos precargados ni inventados.",
+  "nota": "Sin cuotas. Los porcentajes son estimaciones por Poisson que se validan retrospectivamente. No hay historial en la distribución.",
+  "cobertura": {},
+  "partidos": [],
+  "datos_insuficientes": [],
+  "errores_proveedores": []
+}
