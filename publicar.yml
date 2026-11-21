@@ -1,0 +1,72 @@
+name: Actualizar Bato Picks 2.1 y publicar
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  schedule:
+    # Aproximadamente 05:17 y 13:17 hora de Tijuana (varía con horario de verano).
+    - cron: '17 13,21 * * *'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: radar-local-pages
+  cancel-in-progress: false
+
+jobs:
+  update-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Recuperar caché de datos deportivos y noticias
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: radar-local-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            radar-local-
+      - name: Ejecutar todas las pruebas antes de descargar datos
+        run: |
+          python -m unittest discover -s tests -v
+          node --check app.js
+          node --check sw.js
+          python scripts/validate_data.py
+      - name: Consultar fuentes y modelar partidos
+        env:
+          FOOTBALL_DATA_TOKEN: ${{ secrets.FOOTBALL_DATA_TOKEN }}
+          THESPORTSDB_KEY: ${{ secrets.THESPORTSDB_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          APP_TIMEZONE: ${{ vars.APP_TIMEZONE || 'America/Tijuana' }}
+          MAX_WEB_SEARCHES: ${{ vars.MAX_WEB_SEARCHES || '0' }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-6.2-sol' }}
+          FD_COMPETITIONS: ${{ vars.FD_COMPETITIONS || 'PL,PD,BL1,SA,FL1,DED,PPL,BSA,ELC' }}
+          RADAR_USER_AGENT: RadarLocalBatoPicks/2.1 (+https://github.com)
+        run: python scripts/update.py
+      - name: Comprobar JSON antes de publicar
+        run: python scripts/validate_data.py
+      - name: Crear sitio público sin secretos ni caché interna
+        run: |
+          mkdir -p _site/data
+          cp index.html styles.css app.js sw.js manifest.webmanifest icon.svg icon-192.png icon-512.png _site/
+          cp data/predictions.json _site/data/
+          touch _site/.nojekyll
+          if grep -R -E '(sk-proj-|APISPORTS_KEY|FOOTBALL_DATA_TOKEN|OPENAI_API_KEY)' _site/data _site/app.js; then
+            echo 'ERROR: posible clave o nombre de secreto en la publicación'; exit 1
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Publicar GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

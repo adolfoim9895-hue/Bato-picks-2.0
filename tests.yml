@@ -1,0 +1,22 @@
+name: Pruebas de Radar Local
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probar sin conexión ni API keys
+        run: python -m unittest discover -s tests -v
+      - name: Validar JavaScript y datos iniciales
+        run: |
+          node --check app.js
+          node --check sw.js
+          python scripts/validate_data.py
